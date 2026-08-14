@@ -5,6 +5,11 @@ from app.database import get_db
 from app.models.meeting import Meeting
 from app.schemas.meeting import MeetingCreate, MeetingResponse
 
+import os
+import shutil
+
+from fastapi import UploadFile, File
+
 
 router = APIRouter(
     prefix="/meetings",
@@ -60,3 +65,43 @@ def get_meeting(
         )
 
     return meeting
+  
+# Upload a file for a meeting
+@router.post("/upload")
+def upload_meeting(
+    title: str,
+    user_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+
+    # Create upload directory if it doesn't exist
+    upload_dir = "uploads/meetings"
+    os.makedirs(upload_dir, exist_ok=True)
+
+    # Create file path
+    file_path = os.path.join(upload_dir, file.filename)
+
+    # Save uploaded file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Create meeting database record
+    new_meeting = Meeting(
+        title=title,
+        user_id=user_id,
+        file_name=file.filename,
+        file_path=file_path,
+        status="uploaded"
+    )
+
+    db.add(new_meeting)
+    db.commit()
+    db.refresh(new_meeting)
+
+    return {
+        "message": "Meeting uploaded successfully",
+        "meeting_id": new_meeting.id,
+        "file_name": file.filename,
+        "status": new_meeting.status
+    }
