@@ -1,22 +1,64 @@
-# ai-meeting-agent
-AI-powered meeting assistant that transcribes meetings, summarizes discussions, retrieves previous meeting context using MCP, and extracts actionable tasks with assignees and deadlines.
+# AI Meeting Agent
 
+AI-powered meeting assistant that processes recorded meetings, generates transcripts and summaries, and extracts actionable tasks with assignees and deadlines.
 
-# After Postgress logic flow
-1. PostgreSQL
-      ↓
-2. Models
-      ↓
-3. Alembic migrations
-      ↓
-4. CRUD APIs
-      ↓
-5. File upload        ← MP3/WAV/M4A/TXT
-      ↓
-6. Gemini
-      ↓
-7. Transcription
-      ↓
-8. Summary + Action Items
-      ↓
-9. MCP context
+The project is designed to help remote teams and managers automatically understand meeting discussions and track follow-up tasks.
+
+---
+
+## 🚀 Project Overview
+
+The AI Meeting Agent allows users to upload a recorded meeting or meeting transcript.
+
+The backend processes the meeting using Google Gemini and stores the results in PostgreSQL.
+
+The planned system will:
+
+- Upload meeting recordings or text transcripts
+- Transcribe meeting audio using Google Gemini
+- Generate meeting summaries
+- Identify important topics
+- Extract action items
+- Identify task assignees
+- Identify deadlines
+- Store meetings and tasks in PostgreSQL
+- Use MCP (Model Context Protocol) to retrieve context from previous meetings
+- Provide APIs for a future frontend dashboard
+- Monitor system performance using observability tools
+
+---
+
+## 🏗️ System Architecture
+
+```text
+                    AI Meeting Agent
+                           |
+                           v
+                  +------------------+
+                  |     Frontend     |
+                  |   React / Vite   |
+                  +--------+---------+
+                           |
+                           | HTTP API
+                           v
+                  +------------------+
+                  |     FastAPI      |
+                  |     Backend      |
+                  +--------+---------+
+                           |
+             +-------------+-------------+
+             |             |             |
+             v             v             v
+      +------------+ +-----------+ +-----------+
+      | PostgreSQL | |   Gemini  | |    MCP    |
+      |  Database  | |    API    | |   Server  |
+      +------------+ +-----------+ +-----------+
+             |             |             |
+             |             v             |
+             |       Transcript /       |
+             |       Summary / Tasks    |
+             |             |             |
+             +-------------+-------------+
+                           |
+                           v
+                     Meeting Results
