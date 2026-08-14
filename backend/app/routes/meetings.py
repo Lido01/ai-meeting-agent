@@ -9,13 +9,13 @@ import os
 import shutil
 
 from fastapi import UploadFile, File
+from app.services.gemini_service import transcribe_audio
 
 
 router = APIRouter(
     prefix="/meetings",
     tags=["Meetings"]
 )
-
 
 # Create a new meeting
 @router.post("/", response_model=MeetingResponse)
@@ -34,7 +34,6 @@ def create_meeting(
 
     return new_meeting
 
-
 # Get all meetings
 @router.get("/", response_model=list[MeetingResponse])
 def get_meetings(db: Session = Depends(get_db)):
@@ -43,7 +42,6 @@ def get_meetings(db: Session = Depends(get_db)):
     meetings = db.query(Meeting).all()
 
     return meetings
-
 
 # Get one meeting by ID
 @router.get("/{meeting_id}", response_model=MeetingResponse)
@@ -75,33 +73,35 @@ def upload_meeting(
     db: Session = Depends(get_db)
 ):
 
-    # Create upload directory if it doesn't exist
+    # 1. Save uploaded file
     upload_dir = "uploads/meetings"
     os.makedirs(upload_dir, exist_ok=True)
 
-    # Create file path
     file_path = os.path.join(upload_dir, file.filename)
 
-    # Save uploaded file
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # Create meeting database record
+    # 2. Send audio to Gemini
+    transcript = transcribe_audio(file_path)
+
+    # 3. Create meeting record
     new_meeting = Meeting(
         title=title,
         user_id=user_id,
         file_name=file.filename,
         file_path=file_path,
-        status="uploaded"
+        transcript_text=transcript,
+        status="transcribed"
     )
 
+    # 4. Save everything to PostgreSQL
     db.add(new_meeting)
     db.commit()
     db.refresh(new_meeting)
 
     return {
-        "message": "Meeting uploaded successfully",
+        "message": "Meeting processed successfully",
         "meeting_id": new_meeting.id,
-        "file_name": file.filename,
-        "status": new_meeting.status
+        "transcript": transcript
     }
