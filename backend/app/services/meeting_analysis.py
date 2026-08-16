@@ -10,7 +10,7 @@ from google.genai import errors
 load_dotenv()
 
 
-# Create Gemini client using your API key
+# Create Gemini client
 client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
 )
@@ -18,49 +18,47 @@ client = genai.Client(
 
 def analyze_meeting(transcript: str):
     """
-    Send a meeting transcript to Gemini.
+    Analyze a meeting transcript using Gemini.
 
-    Gemini returns:
-    - summary
-    - action_items
+    Returns:
+        summary
+        action_items
     """
 
     prompt = f"""
 You are an AI meeting assistant.
 
-Analyze the following meeting transcript.
+Analyze the following meeting transcript and identify
+real action items assigned to people.
 
-Return ONLY valid JSON using exactly this structure:
+Return ONLY valid JSON using this exact structure:
 
 {{
     "summary": "short summary of the meeting",
     "action_items": [
         {{
-            "description": "specific task",
+            "description": "specific task that must be completed",
             "assignee": "person responsible or null",
             "deadline": "YYYY-MM-DD or null"
         }}
     ]
 }}
 
-Important:
-- Do not add markdown.
-- Do not add ```json.
-- Return only JSON.
-- If there are no action items, return an empty array.
-
 Rules:
-- Return ONLY JSON.
-- Do not use markdown.
-- Do not use ```json.
-- If there are no action items, return an empty array.
-- NEVER invent a deadline.
-- If the year is not explicitly mentioned, return null for the deadline.
-- Only return a deadline when it is clearly stated in the transcript.
+
+1. Return ONLY JSON.
+2. Do NOT use markdown.
+3. Do NOT use ```json.
+4. Do NOT invent tasks.
+5. Do NOT invent people.
+6. Do NOT invent deadlines.
+7. If nobody is assigned a task, return an empty action_items array.
+8. If a person says "I will do...", treat it as an action item.
+9. If someone assigns another person a task, treat it as an action item.
+10. If the deadline does not include a year, return null.
+11. Only use information that exists in the transcript.
 
 Meeting transcript:
-
-
 
 {transcript}
 """
@@ -76,25 +74,43 @@ Meeting transcript:
         # Get Gemini response
         response_text = response.text.strip()
 
-        # Convert JSON text into Python dictionary
+        print("===== GEMINI ANALYSIS RESPONSE =====")
+        print(response_text)
+
+        # Remove markdown if Gemini accidentally returns it
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+
+        response_text = response_text.strip()
+
+        # Convert JSON into Python dictionary
         result = json.loads(response_text)
+
+        # Make sure required fields exist
+        if "summary" not in result:
+            result["summary"] = ""
+
+        if "action_items" not in result:
+            result["action_items"] = []
 
         return result
 
     except errors.APIError as e:
 
-        # Gemini API error, such as 503
         print(f"Gemini API error: {e}")
 
         raise Exception(
-            "Gemini is temporarily unavailable. Please try again."
+            f"Gemini analysis failed: {e}"
         )
 
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
 
-        # Gemini returned something that wasn't valid JSON
         print("Gemini returned invalid JSON.")
+        print(f"JSON error: {e}")
 
         raise Exception(
-            "Gemini returned an invalid analysis response."
+            "Gemini returned invalid JSON."
         )
