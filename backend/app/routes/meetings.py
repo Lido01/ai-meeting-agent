@@ -12,6 +12,8 @@ from fastapi import UploadFile, File
 from app.services.gemini_service import transcribe_audio
 from app.services.meeting_analysis import analyze_meeting
 
+from app.models.task import Task
+
 
 router = APIRouter(
     prefix="/meetings",
@@ -106,6 +108,21 @@ def upload_meeting(
     db.add(new_meeting)
     db.commit()
     db.refresh(new_meeting)
+    
+    # Create a Task for every action item returned by Gemini
+    for item in action_items:
+        new_task = Task(
+            description=item["description"],
+            assigned_to=item["assignee"],
+            deadline=item["deadline"],
+            status="open",
+            meeting_id=new_meeting.id
+        )
+
+        db.add(new_task)
+
+    # Save all tasks to PostgreSQL
+    db.commit()
 
     return {
         "message": "Meeting processed successfully",
