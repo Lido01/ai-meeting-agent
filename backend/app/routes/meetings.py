@@ -10,6 +10,7 @@ import shutil
 
 from fastapi import UploadFile, File
 from app.services.gemini_service import transcribe_audio
+from app.services.meeting_analysis import analyze_meeting
 
 
 router = APIRouter(
@@ -85,6 +86,11 @@ def upload_meeting(
     # 2. Send audio to Gemini
     transcript = transcribe_audio(file_path)
 
+    # 3.  Analyze the transcript with Gemini
+    analysis = analyze_meeting(transcript)
+    summary = analysis["summary"]
+    action_items = analysis["action_items"]
+
     # 3. Create meeting record
     new_meeting = Meeting(
         title=title,
@@ -92,7 +98,8 @@ def upload_meeting(
         file_name=file.filename,
         file_path=file_path,
         transcript_text=transcript,
-        status="transcribed"
+        summary_text=summary,
+        status="analyzed"
     )
 
     # 4. Save everything to PostgreSQL
