@@ -13,6 +13,8 @@ from app.schemas.meeting import MeetingCreate, MeetingResponse
 from app.services.gemini_service import transcribe_audio
 from app.services.meeting_analysis import analyze_meeting
 
+from app.services.mcp_service import get_previous_context
+
 
 router = APIRouter(
     prefix="/meetings",
@@ -147,7 +149,21 @@ def upload_meeting(
 
     try:
 
-        analysis = analyze_meeting(transcript)
+        # Get previous meetings for this user
+        previous_context = get_previous_context(
+            db=db,
+            user_id=user_id
+        )
+
+        print("===== PREVIOUS MEETING CONTEXT =====")
+        print(previous_context)
+
+
+        # Analyze current meeting using previous context
+        analysis = analyze_meeting(
+            transcript=transcript,
+            previous_context=previous_context
+        )
 
         print("===== GEMINI ANALYSIS =====")
         print(analysis)
