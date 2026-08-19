@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.task import Task
-from app.schemas.task import TaskCreate, TaskResponse
+from app.schemas.task import TaskResponse, TaskUpdate
 
 
 router = APIRouter(
@@ -12,36 +12,18 @@ router = APIRouter(
 )
 
 
-# CREATE a task
-@router.post("/", response_model=TaskResponse)
-def create_task(
-    task: TaskCreate,
+# Get all tasks
+@router.get("/", response_model=list[TaskResponse])
+def get_tasks(
     db: Session = Depends(get_db)
 ):
-    new_task = Task(
-        description=task.description,
-        assigned_to=task.assigned_to,
-        deadline=task.deadline,
-        meeting_id=task.meeting_id
-    )
-
-    db.add(new_task)
-    db.commit()
-    db.refresh(new_task)
-
-    return new_task
-
-
-# GET all tasks
-@router.get("/", response_model=list[TaskResponse])
-def get_tasks(db: Session = Depends(get_db)):
 
     tasks = db.query(Task).all()
 
     return tasks
 
 
-# GET one task
+# Get one task
 @router.get("/{task_id}", response_model=TaskResponse)
 def get_task(
     task_id: int,
@@ -61,11 +43,11 @@ def get_task(
     return task
 
 
-# UPDATE a task
-@router.patch("/{task_id}", response_model=TaskResponse)
+# Update a task
+@router.put("/{task_id}", response_model=TaskResponse)
 def update_task(
     task_id: int,
-    status: str,
+    task_data: TaskUpdate,
     db: Session = Depends(get_db)
 ):
 
@@ -79,10 +61,57 @@ def update_task(
             detail="Task not found"
         )
 
-    # Update task status
-    task.status = status
+    # Only allow these statuses
+    allowed_statuses = [
+        "open",
+        "in_progress",
+        "completed"
+    ]
+
+    if task_data.status is not None:
+
+        if task_data.status not in allowed_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid status"
+            )
+
+        task.status = task_data.status
+
+    if task_data.description is not None:
+        task.description = task_data.description
+
+    if task_data.assigned_to is not None:
+        task.assigned_to = task_data.assigned_to
+
+    if task_data.deadline is not None:
+        task.deadline = task_data.deadline
 
     db.commit()
     db.refresh(task)
 
     return task
+
+# Delete a task
+@router.delete("/{task_id}")
+def delete_task(
+    task_id: int,
+    db: Session = Depends(get_db)
+):
+
+    task = db.query(Task).filter(
+        Task.id == task_id
+    ).first()
+
+    if not task:
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+    db.delete(task)
+    db.commit()
+
+    return {
+        "message": "Task deleted successfully"
+    }
