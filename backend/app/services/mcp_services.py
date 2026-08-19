@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+
 from app.models.meeting import Meeting
 
 
@@ -10,15 +11,14 @@ def get_previous_context(
     """
     Get the user's previous meetings.
 
-    These meetings will be given to Gemini
-    as context for the new meeting.
+    This gives the AI previous meeting information
+    that can be used as context for the new meeting.
     """
 
-    meetings = (
+    previous_meetings = (
         db.query(Meeting)
         .filter(
-            Meeting.user_id == user_id,
-            Meeting.transcript_text.isnot(None)
+            Meeting.user_id == user_id
         )
         .order_by(Meeting.id.desc())
         .limit(limit)
@@ -27,7 +27,8 @@ def get_previous_context(
 
     context = []
 
-    for meeting in meetings:
+    for meeting in previous_meetings:
+
         context.append({
             "meeting_id": meeting.id,
             "title": meeting.title,
