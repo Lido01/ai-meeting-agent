@@ -1,22 +1,20 @@
 from sqlalchemy.orm import Session
-
 from app.models.meeting import Meeting
 
 
 def get_previous_context(
     db: Session,
     user_id: int,
-    current_transcript: str,
     limit: int = 5
 ):
     """
-    Get previous meetings for this user.
+    Get the user's previous meetings.
 
-    This is our first simple MCP context layer.
-    Later we can replace/improve this with a real MCP server.
+    These meetings will be given to Gemini
+    as context for the new meeting.
     """
 
-    previous_meetings = (
+    meetings = (
         db.query(Meeting)
         .filter(
             Meeting.user_id == user_id,
@@ -29,8 +27,7 @@ def get_previous_context(
 
     context = []
 
-    for meeting in previous_meetings:
-
+    for meeting in meetings:
         context.append({
             "meeting_id": meeting.id,
             "title": meeting.title,
