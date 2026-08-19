@@ -103,17 +103,20 @@ def upload_meeting(
     # Create directory if it doesn't exist
     os.makedirs(upload_dir, exist_ok=True)
 
+# Create a safe filename
+    import uuid
+    file_extension = os.path.splitext(file.filename)[1].lower()
+
+    safe_filename = f"{uuid.uuid4()}{file_extension}"
+
     file_path = os.path.join(
         upload_dir,
-        file.filename
+        safe_filename
     )
 
-    # Save uploaded file to disk
+    # Save uploaded file
     with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(
-            file.file,
-            buffer
-        )
+        shutil.copyfileobj(file.file, buffer)
 
     print("===== FILE SAVED =====")
     print(file_path)
@@ -177,7 +180,7 @@ def upload_meeting(
     new_meeting = Meeting(
         title=title,
         user_id=user_id,
-        file_name=file.filename,
+        file_name=safe_filename,
         file_path=file_path,
         transcript_text=transcript,
         summary_text=summary,
