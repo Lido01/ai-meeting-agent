@@ -1,4 +1,4 @@
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
 
 from app.database import SessionLocal
 from app.models.meeting import Meeting
@@ -6,18 +6,19 @@ from app.models.task import Task
 
 
 # Create MCP server
-mcp = FastMCP("AI Meeting Agent")
+mcp = MCPServer(
+    "AI Meeting Agent",
+    instructions="Provides previous meeting and task context."
+)
 
 
 @mcp.tool()
 def search_previous_meetings(
     user_id: int,
     limit: int = 5
-):
+) -> list:
     """
-    Find previous meetings for a user.
-
-    This gives the AI context from earlier meetings.
+    Search previous meetings for a user.
     """
 
     db = SessionLocal()
@@ -34,7 +35,6 @@ def search_previous_meetings(
         results = []
 
         for meeting in meetings:
-
             results.append({
                 "meeting_id": meeting.id,
                 "title": meeting.title,
@@ -52,9 +52,9 @@ def search_previous_meetings(
 def get_previous_tasks(
     user_id: int,
     limit: int = 10
-):
+) -> list:
     """
-    Get previous tasks connected to the user's meetings.
+    Get previous tasks for a user.
     """
 
     db = SessionLocal()
@@ -75,14 +75,15 @@ def get_previous_tasks(
         results = []
 
         for task in tasks:
-
             results.append({
                 "task_id": task.id,
                 "description": task.description,
                 "assigned_to": task.assigned_to,
-                "deadline": str(task.deadline)
-                if task.deadline
-                else None,
+                "deadline": (
+                    str(task.deadline)
+                    if task.deadline
+                    else None
+                ),
                 "status": task.status,
                 "meeting_id": task.meeting_id
             })
