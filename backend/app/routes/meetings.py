@@ -16,6 +16,8 @@ from app.services.meeting_analysis import analyze_meeting
 from app.services.mcp_service import get_previous_context
 from app.services.meeting_agent import create_meeting_agent
 
+from app.services.date_parser import parse_deadline
+
 
 router = APIRouter(
     prefix="/meetings",
@@ -122,7 +124,7 @@ def upload_meeting(
         shutil.copyfileobj(file.file, buffer)
 
     print("===== FILE SAVED =====")
-    print(file_path)
+    print("file_path" + file_path)
 
 
     # --------------------------------------------------------
@@ -156,8 +158,8 @@ def upload_meeting(
             user_id=user_id
         )
 
-        print("===== PREVIOUS MEETING CONTEXT =====")
-        print(previous_context)
+        # print("===== PREVIOUS MEETING CONTEXT =====")
+        # print(previous_context)
 
         # Get previous meetings from PostgreSQL
         previous_context = get_previous_context(
@@ -194,16 +196,16 @@ def upload_meeting(
         analysis = json.loads(agent_result)
 
         print("===== AI AGENT RESULT =====")
-        print(agent_result)
+        # print(agent_result)
 
         print("===== GEMINI ANALYSIS =====")
-        print(analysis)
+        # print(analysis)
 
         summary = analysis["meeting_summary"]
         action_items = analysis["action_items"]
 
         print("===== ACTION ITEMS =====")
-        print(action_items)
+        # print(action_items)
 
     except Exception as e:
 
@@ -260,21 +262,20 @@ def upload_meeting(
             print("===== CREATING TASK =====")
             print(item)
 
-            # Safely get values from Gemini
-            description = item.get(
-                "description",
-                ""
+            description = (
+                item.get("task")
+                or item.get("description")
+                or ""
             )
 
-            assignee = item.get(
-                "assignee"
+            assignee = item.get("assignee")
+
+            deadline = parse_deadline(
+                item.get("deadline")
             )
 
-            deadline = item.get(
-                "deadline"
-            )
+            print("Parsed deadline:", deadline)
 
-            # Create Task
             new_task = Task(
                 description=description,
                 assigned_to=assignee,
