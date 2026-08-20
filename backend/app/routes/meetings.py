@@ -14,6 +14,7 @@ from app.services.gemini_service import transcribe_audio
 from app.services.meeting_analysis import analyze_meeting
 
 from app.services.mcp_service import get_previous_context
+from app.services.meeting_agent import create_meeting_agent
 
 
 router = APIRouter(
@@ -158,12 +159,33 @@ def upload_meeting(
         print("===== PREVIOUS MEETING CONTEXT =====")
         print(previous_context)
 
-
-        # Analyze current meeting using previous context
-        analysis = analyze_meeting(
-            transcript=transcript,
-            previous_context=previous_context
+        # Get previous meetings from PostgreSQL
+        previous_context = get_previous_context(
+            db=db,
+            user_id=user_id
         )
+
+        # Convert MCP context into text for the AI Agent
+        context_text = ""
+
+        for meeting in previous_context:
+            context_text += f"""
+        Previous Meeting ID: {meeting["meeting_id"]}
+        Title: {meeting["title"]}
+        Summary: {meeting["summary"]}
+        Transcript: {meeting["transcript"]}
+        -------------------------
+        """
+
+
+        # Run AI Meeting Agent
+        agent_result = create_meeting_agent(
+            transcript=transcript,
+            context=context_text
+        )
+
+        print("===== AI AGENT RESULT =====")
+        print(agent_result)
 
         print("===== GEMINI ANALYSIS =====")
         print(analysis)
