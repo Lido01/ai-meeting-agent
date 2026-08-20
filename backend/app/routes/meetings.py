@@ -183,6 +183,15 @@ def upload_meeting(
             transcript=transcript,
             context=context_text
         )
+        import json
+
+        agent_result = agent_result.replace(
+            "```json", ""
+        ).replace(
+            "```", ""
+        ).strip()
+
+        analysis = json.loads(agent_result)
 
         print("===== AI AGENT RESULT =====")
         print(agent_result)
@@ -190,15 +199,8 @@ def upload_meeting(
         print("===== GEMINI ANALYSIS =====")
         print(analysis)
 
-        summary = analysis.get(
-            "summary",
-            ""
-        )
-
-        action_items = analysis.get(
-            "action_items",
-            []
-        )
+        summary = analysis["meeting_summary"]
+        action_items = analysis["action_items"]
 
         print("===== ACTION ITEMS =====")
         print(action_items)
