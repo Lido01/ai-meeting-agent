@@ -39,18 +39,20 @@ async def main():
 
             print("\n===== PREVIOUS MEETINGS =====")
             print(result.content)
-
-            # Test previous tasks
+            
             result = await session.call_tool(
-                "get_previous_tasks",
+                "get_meeting_context",
                 arguments={
                     "user_id": 1,
-                    "limit": 10
+                    "limit": 5
                 }
             )
 
-            print("\n===== PREVIOUS TASKS =====")
+            print("\n===== MCP MEETING CONTEXT =====")
             print(result.content)
+
+            # print("\n===== PREVIOUS TASKS =====")
+            # print(result.content)
 
 
 if __name__ == "__main__":
