@@ -5,7 +5,6 @@ from app.database import get_db
 from app.models.task import Task
 from app.models.meeting import Meeting
 from app.schemas.task import TaskResponse, TaskUpdate
-
 from app.dependencies.auth import get_current_user
 
 
@@ -15,35 +14,51 @@ router = APIRouter(
 )
 
 
+# ============================================================
+# GET ALL TASKS
+# ============================================================
 
-# GET ALL TASKS FOR A USER
-@router.get("/")
+@router.get("/", response_model=list[TaskResponse])
 def get_tasks(
     db: Session = Depends(get_db),
-    user_id: int = Depends(get_current_user)
+    current_user_id: int = Depends(get_current_user)
 ):
+    """
+    Get all tasks belonging to the logged-in user.
+
+    JWT → current_user_id
+          ↓
+    Meeting.user_id
+          ↓
+    User's tasks only
+    """
+
     tasks = (
         db.query(Task)
         .join(Meeting)
-        .filter(Meeting.user_id == user_id)
+        .filter(
+            Meeting.user_id == current_user_id
+        )
         .all()
     )
 
     return tasks
 
 
-
+# ============================================================
 # GET ONE TASK
-
+# ============================================================
 
 @router.get("/{task_id}", response_model=TaskResponse)
 def get_task(
     task_id: int,
-    user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user)
 ):
     """
-    Get one task only if it belongs to the user.
+    Get one task.
+
+    The task must belong to the logged-in user.
     """
 
     task = (
@@ -51,7 +66,7 @@ def get_task(
         .join(Meeting)
         .filter(
             Task.id == task_id,
-            Meeting.user_id == user_id
+            Meeting.user_id == current_user_id
         )
         .first()
     )
@@ -65,22 +80,22 @@ def get_task(
     return task
 
 
-
+# ============================================================
 # UPDATE TASK
-
+# ============================================================
 
 @router.put("/{task_id}", response_model=TaskResponse)
 def update_task(
     task_id: int,
-    user_id: int,
     task_data: TaskUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user)
 ):
     """
-    Update a task.
+    Update a task belonging to the logged-in user.
 
     Example:
-    Change status from open → completed.
+    open → completed
     """
 
     task = (
@@ -88,7 +103,7 @@ def update_task(
         .join(Meeting)
         .filter(
             Task.id == task_id,
-            Meeting.user_id == user_id
+            Meeting.user_id == current_user_id
         )
         .first()
     )
@@ -99,37 +114,43 @@ def update_task(
             detail="Task not found"
         )
 
-    # Only update fields provided by the user
+    # Update description if provided
     if task_data.description is not None:
         task.description = task_data.description
 
+    # Update assignee if provided
     if task_data.assigned_to is not None:
         task.assigned_to = task_data.assigned_to
 
+    # Update deadline if provided
     if task_data.deadline is not None:
         task.deadline = task_data.deadline
 
+    # Update status if provided
     if task_data.status is not None:
         task.status = task_data.status
 
+    # Save changes
     db.commit()
+
+    # Get updated task
     db.refresh(task)
 
     return task
 
 
-
+# ============================================================
 # DELETE TASK
-
+# ============================================================
 
 @router.delete("/{task_id}")
 def delete_task(
     task_id: int,
-    user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user)
 ):
     """
-    Delete a task belonging to the user.
+    Delete a task belonging to the logged-in user.
     """
 
     task = (
@@ -137,7 +158,7 @@ def delete_task(
         .join(Meeting)
         .filter(
             Task.id == task_id,
-            Meeting.user_id == user_id
+            Meeting.user_id == current_user_id
         )
         .first()
     )
