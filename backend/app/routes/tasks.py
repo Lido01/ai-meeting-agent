@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.task import Task
+from app.models.meeting import Meeting
 from app.schemas.task import TaskResponse, TaskUpdate
 
 
@@ -12,27 +13,52 @@ router = APIRouter(
 )
 
 
-# Get all tasks
+# ============================================================
+# GET ALL TASKS FOR A USER
+# ============================================================
+
 @router.get("/", response_model=list[TaskResponse])
 def get_tasks(
+    user_id: int,
     db: Session = Depends(get_db)
 ):
+    """
+    Get tasks belonging to meetings owned by this user.
+    """
 
-    tasks = db.query(Task).all()
+    tasks = (
+        db.query(Task)
+        .join(Meeting)
+        .filter(Meeting.user_id == user_id)
+        .all()
+    )
 
     return tasks
 
 
-# Get one task
+# ============================================================
+# GET ONE TASK
+# ============================================================
+
 @router.get("/{task_id}", response_model=TaskResponse)
 def get_task(
     task_id: int,
+    user_id: int,
     db: Session = Depends(get_db)
 ):
+    """
+    Get one task only if it belongs to the user.
+    """
 
-    task = db.query(Task).filter(
-        Task.id == task_id
-    ).first()
+    task = (
+        db.query(Task)
+        .join(Meeting)
+        .filter(
+            Task.id == task_id,
+            Meeting.user_id == user_id
+        )
+        .first()
+    )
 
     if not task:
         raise HTTPException(
@@ -43,17 +69,33 @@ def get_task(
     return task
 
 
-# Update a task
+# ============================================================
+# UPDATE TASK
+# ============================================================
+
 @router.put("/{task_id}", response_model=TaskResponse)
 def update_task(
     task_id: int,
+    user_id: int,
     task_data: TaskUpdate,
     db: Session = Depends(get_db)
 ):
+    """
+    Update a task.
 
-    task = db.query(Task).filter(
-        Task.id == task_id
-    ).first()
+    Example:
+    Change status from open → completed.
+    """
+
+    task = (
+        db.query(Task)
+        .join(Meeting)
+        .filter(
+            Task.id == task_id,
+            Meeting.user_id == user_id
+        )
+        .first()
+    )
 
     if not task:
         raise HTTPException(
@@ -61,23 +103,7 @@ def update_task(
             detail="Task not found"
         )
 
-    # Only allow these statuses
-    allowed_statuses = [
-        "open",
-        "in_progress",
-        "completed"
-    ]
-
-    if task_data.status is not None:
-
-        if task_data.status not in allowed_statuses:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid status"
-            )
-
-        task.status = task_data.status
-
+    # Only update fields provided by the user
     if task_data.description is not None:
         task.description = task_data.description
 
@@ -87,21 +113,38 @@ def update_task(
     if task_data.deadline is not None:
         task.deadline = task_data.deadline
 
+    if task_data.status is not None:
+        task.status = task_data.status
+
     db.commit()
     db.refresh(task)
 
     return task
 
-# Delete a task
+
+# ============================================================
+# DELETE TASK
+# ============================================================
+
 @router.delete("/{task_id}")
 def delete_task(
     task_id: int,
+    user_id: int,
     db: Session = Depends(get_db)
 ):
+    """
+    Delete a task belonging to the user.
+    """
 
-    task = db.query(Task).filter(
-        Task.id == task_id
-    ).first()
+    task = (
+        db.query(Task)
+        .join(Meeting)
+        .filter(
+            Task.id == task_id,
+            Meeting.user_id == user_id
+        )
+        .first()
+    )
 
     if not task:
         raise HTTPException(
