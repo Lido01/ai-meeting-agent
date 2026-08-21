@@ -47,26 +47,41 @@ def create_meeting(
 
     return new_meeting
 
-# GET ALL MEETINGS
+# GET ALL MEETINGS FOR A USER
 @router.get("/", response_model=list[MeetingResponse])
 def get_meetings(
+    user_id: int,
     db: Session = Depends(get_db)
 ):
-    
-    meetings = db.query(Meeting).all()
+    """
+    Return only meetings belonging to this user.
+    """
+
+    meetings = (
+        db.query(Meeting)
+        .filter(Meeting.user_id == user_id)
+        .all()
+    )
 
     return meetings
 
-# GET ONE MEETING
+# GET A SPECIFIC MEETING BY ID
 @router.get("/{meeting_id}", response_model=MeetingResponse)
 def get_meeting(
     meeting_id: int,
+    user_id: int,
     db: Session = Depends(get_db)
 ):
+    """
+    Get a meeting only if it belongs to the user.
+    """
 
     meeting = (
         db.query(Meeting)
-        .filter(Meeting.id == meeting_id)
+        .filter(
+            Meeting.id == meeting_id,
+            Meeting.user_id == user_id
+        )
         .first()
     )
 
