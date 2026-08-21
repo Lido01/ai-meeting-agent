@@ -13,7 +13,7 @@ def get_current_user(
     token: str = Depends(oauth2_scheme)
 ):
     """
-    Get the logged-in user's ID from JWT.
+    Read the JWT token and get the logged-in user's ID.
     """
 
     user_id = verify_access_token(token)
