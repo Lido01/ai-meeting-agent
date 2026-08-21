@@ -17,6 +17,7 @@ from app.services.gemini_service import transcribe_audio
 from app.services.mcp_service import get_previous_context
 from app.services.meeting_agent import create_meeting_agent
 from app.services.date_parser import parse_deadline
+from backend.app.dependencies.auth import get_current_user
 
 # ROUTER
 router = APIRouter(
@@ -38,7 +39,7 @@ def create_meeting(
 
     new_meeting = Meeting(
         title=meeting.title,
-        user_id=meeting.user_id
+        user_id=meeting.user_id,
     )
 
     db.add(new_meeting)
@@ -69,7 +70,7 @@ def get_meetings(
 @router.get("/{meeting_id}", response_model=MeetingResponse)
 def get_meeting(
     meeting_id: int,
-    user_id: int,
+    user_id:  int,
     db: Session = Depends(get_db)
 ):
     """
@@ -97,9 +98,9 @@ def get_meeting(
 @router.post("/upload")
 def upload_meeting(
     title: str,
-    user_id: int,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user)
 ):
     
     # STEP 1: SAVE UPLOADED AUDIO
@@ -172,7 +173,7 @@ def upload_meeting(
         # This is our current MCP/context layer.
         previous_context = get_previous_context(
             db=db,
-            user_id=user_id
+            user_id=current_user_id
         )
 
         print("===== PREVIOUS CONTEXT =====")
@@ -280,7 +281,7 @@ Transcript:
     # STEP 8: CREATE MEETING DATABASE RECORD
     new_meeting = Meeting(
         title=title,
-        user_id=user_id,
+        user_id=current_user_id,
         file_name=safe_filename,
         file_path=file_path,
         transcript_text=transcript,
