@@ -6,6 +6,8 @@ from app.models.task import Task
 from app.models.meeting import Meeting
 from app.schemas.task import TaskResponse, TaskUpdate
 
+from app.dependencies.auth import get_current_user
+
 
 router = APIRouter(
     prefix="/tasks",
@@ -13,19 +15,13 @@ router = APIRouter(
 )
 
 
-# ============================================================
+
 # GET ALL TASKS FOR A USER
-# ============================================================
-
-@router.get("/", response_model=list[TaskResponse])
+@router.get("/")
 def get_tasks(
-    user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user)
 ):
-    """
-    Get tasks belonging to meetings owned by this user.
-    """
-
     tasks = (
         db.query(Task)
         .join(Meeting)
@@ -36,9 +32,9 @@ def get_tasks(
     return tasks
 
 
-# ============================================================
+
 # GET ONE TASK
-# ============================================================
+
 
 @router.get("/{task_id}", response_model=TaskResponse)
 def get_task(
@@ -69,9 +65,9 @@ def get_task(
     return task
 
 
-# ============================================================
+
 # UPDATE TASK
-# ============================================================
+
 
 @router.put("/{task_id}", response_model=TaskResponse)
 def update_task(
@@ -122,9 +118,9 @@ def update_task(
     return task
 
 
-# ============================================================
+
 # DELETE TASK
-# ============================================================
+
 
 @router.delete("/{task_id}")
 def delete_task(
