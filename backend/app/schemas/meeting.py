@@ -1,19 +1,26 @@
 from pydantic import BaseModel
 from typing import Optional
-
+from datetime import datetime
+from app.schemas.task import TaskResponse
 
 class MeetingCreate(BaseModel):
     title: str
     user_id: int
 
 
-class MeetingResponse(MeetingCreate):
+class MeetingResponse(BaseModel):
     id: int
-    file_name: Optional[str] = None
-    file_path: Optional[str] = None
-    transcript_text: Optional[str] = None
-    summary_text: Optional[str] = None
-    status: str
+    title: str
+    user_id: int
+
+    file_name: str | None = None
+    file_path: str | None = None
+
+    transcript_text: str | None = None
+    summary_text: str | None = None
+    status: str | None = None
+
+    tasks: list[TaskResponse] = []
 
     class Config:
         from_attributes = True
