@@ -1,40 +1,41 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi import UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
 import os
 import shutil
+import uuid
+import json
 
 from app.database import get_db
+
 from app.models.meeting import Meeting
 from app.models.task import Task
+
 from app.schemas.meeting import MeetingCreate, MeetingResponse
 
 from app.services.gemini_service import transcribe_audio
-from app.services.meeting_analysis import analyze_meeting
-
 from app.services.mcp_service import get_previous_context
 from app.services.meeting_agent import create_meeting_agent
-
 from app.services.date_parser import parse_deadline
 
-
+# ROUTER
 router = APIRouter(
     prefix="/meetings",
     tags=["Meetings"]
 )
 
-
-# ============================================================
-# CREATE MEETING
-# ============================================================
-
+# CREATE MEETING MANUALLY
 @router.post("/", response_model=MeetingResponse)
 def create_meeting(
     meeting: MeetingCreate,
     db: Session = Depends(get_db)
 ):
-    # Create a meeting manually
+    """
+    Create a meeting without uploading an audio file.
+
+    This is useful for creating a basic meeting record.
+    """
+
     new_meeting = Meeting(
         title=meeting.title,
         user_id=meeting.user_id
@@ -46,38 +47,29 @@ def create_meeting(
 
     return new_meeting
 
-
-# ============================================================
 # GET ALL MEETINGS
-# ============================================================
-
 @router.get("/", response_model=list[MeetingResponse])
 def get_meetings(
     db: Session = Depends(get_db)
 ):
-
-    # Get all meetings from PostgreSQL
+    
     meetings = db.query(Meeting).all()
 
     return meetings
 
-
-# ============================================================
 # GET ONE MEETING
-# ============================================================
-
 @router.get("/{meeting_id}", response_model=MeetingResponse)
 def get_meeting(
     meeting_id: int,
     db: Session = Depends(get_db)
 ):
 
-    # Search for the meeting
-    meeting = db.query(Meeting).filter(
-        Meeting.id == meeting_id
-    ).first()
+    meeting = (
+        db.query(Meeting)
+        .filter(Meeting.id == meeting_id)
+        .first()
+    )
 
-    # Meeting doesn't exist
     if not meeting:
         raise HTTPException(
             status_code=404,
@@ -86,11 +78,7 @@ def get_meeting(
 
     return meeting
 
-
-# ============================================================
-# UPLOAD MEETING AUDIO
-# ============================================================
-
+# UPLOAD AND PROCESS MEETING AUDIO
 @router.post("/upload")
 def upload_meeting(
     title: str,
@@ -98,42 +86,59 @@ def upload_meeting(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-
-    # --------------------------------------------------------
-    # STEP 1: Save uploaded audio file
-    # --------------------------------------------------------
+    
+    # STEP 1: SAVE UPLOADED AUDIO
+    
 
     upload_dir = "uploads/meetings"
 
-    # Create directory if it doesn't exist
-    os.makedirs(upload_dir, exist_ok=True)
+    # Create upload directory if it doesn't exist
+    os.makedirs(
+        upload_dir,
+        exist_ok=True
+    )
 
-# Create a safe filename
-    import uuid
-    file_extension = os.path.splitext(file.filename)[1].lower()
+    # Create a unique filename. This prevents two users from having the same filename.
+    file_extension = os.path.splitext(
+        file.filename
+    )[1].lower()
 
-    safe_filename = f"{uuid.uuid4()}{file_extension}"
+    safe_filename = (
+        f"{uuid.uuid4()}{file_extension}"
+    )
 
     file_path = os.path.join(
         upload_dir,
         safe_filename
     )
 
-    # Save uploaded file
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    print("===== FILE SAVED =====")
-    print("file_path" + file_path)
-
-
-    # --------------------------------------------------------
-    # STEP 2: Transcribe audio using Gemini
-    # --------------------------------------------------------
-
+    # Save uploaded file to disk
     try:
 
-        transcript = transcribe_audio(file_path)
+        with open(file_path, "wb") as buffer:
+
+            shutil.copyfileobj(
+                file.file,
+                buffer
+            )
+
+        print("===== FILE SAVED =====")
+        print(file_path)
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not save uploaded file: {str(e)}"
+        )
+
+    # STEP 2: TRANSCRIBE AUDIO
+    try:
+
+        # Send audio to Gemini transcription service
+        transcript = transcribe_audio(
+            file_path
+        )
 
         print("===== TRANSCRIPT =====")
         print(transcript)
@@ -145,80 +150,119 @@ def upload_meeting(
             detail=f"Transcription failed: {str(e)}"
         )
 
-
-    # --------------------------------------------------------
-    # STEP 3: Analyze transcript
-    # --------------------------------------------------------
-
+    # STEP 3: GET PREVIOUS MEETING CONTEXT
     try:
 
-        # Get previous meetings for this user
+        # Get previous meetings belonging to this user.
+        # This is our current MCP/context layer.
         previous_context = get_previous_context(
             db=db,
             user_id=user_id
         )
 
-        # print("===== PREVIOUS MEETING CONTEXT =====")
-        # print(previous_context)
-
-        # Get previous meetings from PostgreSQL
-        previous_context = get_previous_context(
-            db=db,
-            user_id=user_id
-        )
-
-        # Convert MCP context into text for the AI Agent
-        context_text = ""
-
-        for meeting in previous_context:
-            context_text += f"""
-        Previous Meeting ID: {meeting["meeting_id"]}
-        Title: {meeting["title"]}
-        Summary: {meeting["summary"]}
-        Transcript: {meeting["transcript"]}
-        -------------------------
-        """
-
-
-        # Run AI Meeting Agent
-        agent_result = create_meeting_agent(
-            transcript=transcript,
-            context=context_text
-        )
-        import json
-
-        agent_result = agent_result.replace(
-            "```json", ""
-        ).replace(
-            "```", ""
-        ).strip()
-
-        analysis = json.loads(agent_result)
-
-        print("===== AI AGENT RESULT =====")
-        # print(agent_result)
-
-        print("===== GEMINI ANALYSIS =====")
-        # print(analysis)
-
-        summary = analysis["meeting_summary"]
-        action_items = analysis["action_items"]
-
-        print("===== ACTION ITEMS =====")
-        # print(action_items)
+        print("===== PREVIOUS CONTEXT =====")
+        print(previous_context)
 
     except Exception as e:
 
         raise HTTPException(
             status_code=500,
-            detail=f"Meeting analysis failed: {str(e)}"
+            detail=f"Could not get previous meeting context: {str(e)}"
         )
 
+    # STEP 4: CONVERT CONTEXT TO TEXT
+    context_text = ""
 
-    # --------------------------------------------------------
-    # STEP 4: Create Meeting database record
-    # --------------------------------------------------------
+    for previous_meeting in previous_context:
 
+        context_text += f"""
+Previous Meeting ID:
+{previous_meeting["meeting_id"]}
+
+Title:
+{previous_meeting["title"]}
+
+Summary:
+{previous_meeting["summary"]}
+
+Transcript:
+{previous_meeting["transcript"]}
+
+--------------------------------
+"""
+
+    # If this is the user's first meeting
+    if not context_text:
+
+        context_text = (
+            "No previous meeting context is available."
+        )
+
+    # STEP 5: RUN AI MEETING AGENT
+    try:
+
+        # Send: Current transcript + Previous meeting context to Gemini through our AI Agent.
+        agent_result = create_meeting_agent(
+            transcript=transcript,
+            context=context_text
+        )
+
+        print("===== RAW AI AGENT RESULT =====")
+        print(agent_result)
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"AI Agent failed: {str(e)}"
+        )
+
+    # STEP 6: CONVERT AI RESPONSE TO PYTHON DICTIONARY
+    try:
+
+        agent_result = (
+            agent_result
+            .replace("```json", "")
+            .replace("```", "")
+            .strip()
+        )
+
+        # Convert JSON string → Python dictionary
+        analysis = json.loads(
+            agent_result
+        )
+
+        print("===== AI ANALYSIS =====")
+        print(analysis)
+
+    except json.JSONDecodeError as e:
+
+        print("===== JSON ERROR =====")
+        print(agent_result)
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"AI Agent returned invalid JSON: {str(e)}"
+        )
+
+    # STEP 7: GET SUMMARY AND ACTION ITEMS
+    summary = analysis.get(
+        "meeting_summary",
+        ""
+    )
+
+    action_items = analysis.get(
+        "action_items",
+        []
+    )
+
+    print("===== SUMMARY =====")
+    print(summary)
+
+    print("===== ACTION ITEMS =====")
+    print(action_items)
+
+    # STEP 8: CREATE MEETING DATABASE RECORD
     new_meeting = Meeting(
         title=title,
         user_id=user_id,
@@ -226,18 +270,17 @@ def upload_meeting(
         file_path=file_path,
         transcript_text=transcript,
         summary_text=summary,
+
         status="analyzed"
     )
 
     try:
-
         db.add(new_meeting)
-
-        # Save meeting first
         db.commit()
+        db.refresh(new_meeting) # Get generated meeting ID
 
-        # Get generated meeting ID
-        db.refresh(new_meeting)
+        print("===== MEETING SAVED =====")
+        print("Meeting ID:", new_meeting.id)
 
     except Exception as e:
 
@@ -248,11 +291,7 @@ def upload_meeting(
             detail=f"Could not save meeting: {str(e)}"
         )
 
-
-    # --------------------------------------------------------
-    # STEP 5: Create Tasks from Gemini action items
-    # --------------------------------------------------------
-
+    # STEP 9: CREATE TASKS
     created_tasks = []
 
     try:
@@ -268,33 +307,67 @@ def upload_meeting(
                 or ""
             )
 
-            assignee = item.get("assignee")
+
+            # Person responsible
+            assignee = item.get(
+                "assignee"
+            )
 
             deadline = parse_deadline(
                 item.get("deadline")
             )
 
-            print("Parsed deadline:", deadline)
+            print(
+                "Parsed deadline:",
+                deadline
+            )
 
+
+            # Don't create an empty task
+            if not description:
+
+                print(
+                    "Skipping task because description is empty."
+                )
+
+                continue
+
+
+            # Create PostgreSQL Task object
             new_task = Task(
                 description=description,
                 assigned_to=assignee,
                 deadline=deadline,
                 status="open",
+
+                # Connect task to this meeting
                 meeting_id=new_meeting.id
             )
 
             db.add(new_task)
 
+
+            # Add task to response
             created_tasks.append({
                 "description": description,
                 "assigned_to": assignee,
-                "deadline": deadline,
-                "status": "open"
+                "deadline": (
+                    str(deadline)
+                    if deadline
+                    else None
+                ),
+                "status": "open",
+                "meeting_id": new_meeting.id
             })
 
-        # Save tasks
+
+        # Save all tasks
         db.commit()
+
+        print("===== TASKS SAVED =====")
+        print(
+            f"{len(created_tasks)} task(s) created."
+        )
 
     except Exception as e:
 
@@ -309,13 +382,12 @@ def upload_meeting(
             detail=f"Could not save tasks: {str(e)}"
         )
 
-
-    # --------------------------------------------------------
-    # STEP 6: Return result
-    # --------------------------------------------------------
-
+    # STEP 10: RETURN FINAL RESULT
     return {
-        "message": "Meeting processed successfully",
+
+        "message": (
+            "Meeting processed successfully"
+        ),
 
         "meeting_id": new_meeting.id,
 
