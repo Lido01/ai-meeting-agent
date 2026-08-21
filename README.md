@@ -62,3 +62,52 @@ The planned system will:
                            |
                            v
                      Meeting Results
+
+```
+
+## Folder Strucure
+
+meeting-agent/
+│
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   │
+│   │   ├── api/
+│   │   │   ├── meetings.py
+│   │   │   ├── tasks.py
+│   │   │   └── users.py
+│   │   │
+│   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   └── database.py
+│   │   │
+│   │   ├── models/
+│   │   │   ├── user.py
+│   │   │   ├── meeting.py
+│   │   │   └── task.py
+│   │   │
+│   │   ├── schemas/
+│   │   │   ├── meeting.py
+│   │   │   └── task.py
+│   │   │
+│   │   ├── services/
+│   │   │   ├── meeting_service.py
+│   │   │   ├── gemini_service.py
+│   │   │   ├── transcription_service.py
+│   │   │   └── task_extraction_service.py
+│   │   │
+│   │   └── mcp/
+│   │       └── server.py
+│   │
+│   ├── tests/
+│   │
+│   ├── requirements.txt
+│   └── .env
+│
+├── frontend/
+│   └── ...
+│
+├── docker-compose.yml
+│
+└── README.md

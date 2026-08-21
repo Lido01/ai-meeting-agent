@@ -12,9 +12,22 @@ class TaskCreate(BaseModel):
 
 
 # Data returned by API
-class TaskResponse(TaskCreate):
+class TaskResponse(BaseModel):
     id: int
+    description: str
+    assigned_to: str | None = None
+    deadline: date | None = None
     status: str
+    meeting_id: int
 
     class Config:
         from_attributes = True
+
+
+class TaskUpdate(BaseModel):
+    description: str | None = None
+    assigned_to: str | None = None
+    deadline: date | None = None
+
+    # Task status
+    status: str | None = None
