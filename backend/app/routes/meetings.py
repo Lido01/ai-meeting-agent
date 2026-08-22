@@ -17,7 +17,7 @@ from app.services.gemini_service import transcribe_audio
 from app.services.mcp_service import get_previous_context
 from app.services.meeting_agent import create_meeting_agent
 from app.services.date_parser import parse_deadline
-from backend.app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_user
 
 # ROUTER
 router = APIRouter(
@@ -53,6 +53,7 @@ def create_meeting(
 def get_meetings(
     user_id: int,
     db: Session = Depends(get_db)
+    
 ):
     """
     Return only meetings belonging to this user.
