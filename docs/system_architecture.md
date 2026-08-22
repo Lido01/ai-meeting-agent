@@ -1,3 +1,5 @@
+
+# 1. System Architecture Flow
                  ┌──────────────────────┐
                  │    Current Meeting   │
                  └──────────┬───────────┘
@@ -37,90 +39,75 @@
                        PostgreSQL
 
 
-STEP 1 → Create GitHub repo
-STEP 2 → Create FastAPI project
-STEP 3 → Install PostgreSQL
-STEP 4 → Connect FastAPI → PostgreSQL
-STEP 5 → Create database models
-STEP 6 → Create API endpoints
-STEP 7 → Add authentication
-STEP 8 → Add meeting upload
-STEP 9 → Connect Gemini
-STEP 10 → Add MCP
-STEP 11 → Test complete AI pipeline
-STEP 12 → Backend finished
-                    ↓
-              THEN frontend
+# 2. Important Frontend Rules
+
+The frontend must NOT:
+
+- Connect directly to PostgreSQL.
+- Call Gemini directly.
+- Send passwords to PostgreSQL.
+- Send user_id manually for protected APIs.
+- Store the JWT in normal application state only.
+
+The frontend SHOULD:
+
+- Communicate through FastAPI.
+- Send JWT with protected requests.
+- Send uploaded files to FastAPI.
+- Display loading states.
+- Display API errors.
+- Redirect to login when authentication fails.
 
 
+---
 
-<!-- file .mp, m4a, .txt file accept flow -->
-User
- ↓
-Upload meeting.mp3
- ↓
-FastAPI
- ↓
-Save file
- ↓
-Create Meeting record
- ↓
-Gemini
- ↓
-Transcript
- ↓
-Summary
- ↓
-Action Items
- ↓
-Tasks
+# 3. Backend Responsibilities
 
-# 🚧 Development Roadmap
-## Phase 1 — Backend Foundation
-      FastAPI setup
-      PostgreSQL setup
-      SQLAlchemy setup
-      Alembic migrations
-      User model
-      Meeting model
-      Task model
-      User API
-      Meeting API
-      Task API
+The frontend only sends requests.
 
-## Phase 2 — Meeting Processing
-      Meeting file upload
-      Gemini API connection
-      Audio transcription --- ?
-      Meeting summary
-      Topic extraction 
-      Action-item extraction
-      Assignee extraction
-      Deadline extraction
-      Automatic task creation
+FastAPI is responsible for:
 
-## Phase 3 — AI Agent + MCP
-      MCP server
-      Search previous meetings
-      Retrieve previous tasks
-      Retrieve team members
-      Historical context analysis
-      Agent-based task updates
+- Authentication
+- JWT verification
+- File upload
+- Audio processing
+- Gemini transcription
+- MCP context
+- AI analysis
+- Summary generation
+- Action item extraction
+- Deadline parsing
+- Task creation
+- PostgreSQL storage
+- Task CRUD
+- User data isolation
 
-## Phase 4 — Frontend
-      React setup
-      Login/register
-      Meeting upload page
-      Meeting list
-      Meeting details
-      Summary display
-      Task dashboard
-      Task status management
 
-## Phase 5 — Observability
-      Prometheus
-      Grafana
-      Processing-time metrics
-      AI request metrics
-      Error monitoring
-      Task extraction metrics
+---
+
+# 34. Main MVP Goal
+
+The complete user experience should be:
+User registers
+      ↓
+User logs in
+      ↓
+JWT token
+      ↓
+Dashboard
+      ↓
+Upload meeting
+      ↓
+AI processes meeting
+      ↓
+Summary generated
+      ↓
+Action items extracted
+      ↓
+Tasks created
+      ↓
+User views tasks
+      ↓
+User completes/updates tasks
+
+This is the main AI Meeting Agent MVP.
