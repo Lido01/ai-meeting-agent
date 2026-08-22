@@ -70,18 +70,14 @@ def get_meetings(
 @router.get("/{meeting_id}", response_model=MeetingResponse)
 def get_meeting(
     meeting_id: int,
-    user_id:  int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user)
 ):
-    """
-    Get a meeting only if it belongs to the user.
-    """
-
     meeting = (
         db.query(Meeting)
         .filter(
             Meeting.id == meeting_id,
-            Meeting.user_id == user_id
+            Meeting.user_id == current_user_id
         )
         .first()
     )
@@ -93,7 +89,6 @@ def get_meeting(
         )
 
     return meeting
-
 # UPLOAD AND PROCESS MEETING AUDIO
 @router.post("/upload")
 def upload_meeting(
