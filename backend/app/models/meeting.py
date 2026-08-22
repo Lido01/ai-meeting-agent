@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.sql import func
 from app.database import Base
+from sqlalchemy.orm import relationship
 
 
 class Meeting(Base):
@@ -16,6 +17,12 @@ class Meeting(Base):
     # These will be filled later by Gemini
     transcript_text = Column(Text)
     summary_text = Column(Text)
+    
+    tasks = relationship(
+        "Task",
+        back_populates="meeting",
+        cascade="all, delete-orphan"
+    )
 
     status = Column(String, default="processing")
 
