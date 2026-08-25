@@ -85,7 +85,7 @@ FastAPI is responsible for:
 
 ---
 
-# 34. Main MVP Goal
+# 4. Main MVP Goal
 
 The complete user experience should be:
 User registers
@@ -111,3 +111,53 @@ User views tasks
 User completes/updates tasks
 
 This is the main AI Meeting Agent MVP.
+
+
+
+# 5. Flow After COntext Continuity Added
+
+
+                UPLOAD AUDIO
+                     │
+                     ▼
+                TRANSCRIPTION
+                     │
+                     ▼
+             GET PREVIOUS CONTEXT
+                     │
+                     ▼
+              AI MEETING AGENT
+                     │
+          ┌──────────┴──────────┐
+          ▼                     ▼
+       SUMMARY              ACTION ITEMS
+          │                     │
+          │                     ▼
+          │                CREATE TASKS
+          │
+          ▼
+   CONTEXT CONTINUITY
+       ANALYSIS
+          │
+          ▼
+    Was something
+       changed?
+          │
+      ┌───┴────┐
+      │        │
+     NO       YES
+      │        │
+      ▼        ▼
+   Nothing   Save as
+             PENDING
+                │
+                ▼
+       Frontend shows:
+       "Confirm update?"
+                │
+          ┌─────┴─────┐
+          ▼           ▼
+       Confirm       Reject
+          │           │
+          ▼           ▼
+    Update task    Keep old task
