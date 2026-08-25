@@ -24,6 +24,7 @@ from app.database import Base, DATABASE_URL # <-- Imported DATABASE_URL to fix t
 from app.models.user import User
 from app.models.meeting import Meeting
 from app.models.task import Task
+from app.models.context_change import ContextChange
 
 # Set target_metadata to enable 'alembic revision --autogenerate'
 target_metadata = Base.metadata
