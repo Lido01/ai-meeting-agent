@@ -1,7 +1,6 @@
+
 from fastapi import APIRouter, Depends, HTTPException
-
 from sqlalchemy.orm import Session
-
 from passlib.context import CryptContext
 
 from app.database import get_db
@@ -15,7 +14,6 @@ router = APIRouter(
 )
 
 
-# Password hashing configuration
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto"
@@ -27,19 +25,23 @@ def create_user(
     user: UserCreate,
     db: Session = Depends(get_db)
 ):
-    """
-    Create a new user.
+    print("===== CREATE USER START =====")
 
-    The password is hashed before saving it
-    to PostgreSQL.
-    """
+    print("Received user:", user.email)
 
-    # Check whether email already exists
+    # --------------------------------------------------------
+    # STEP 1: Check existing user
+    # --------------------------------------------------------
+
+    print("Checking existing user...")
+
     existing_user = (
         db.query(User)
         .filter(User.email == user.email)
         .first()
     )
+
+    print("Existing user:", existing_user)
 
     if existing_user:
         raise HTTPException(
@@ -47,12 +49,24 @@ def create_user(
             detail="Email already registered"
         )
 
-    # Hash the password
+    # --------------------------------------------------------
+    # STEP 2: Hash password
+    # --------------------------------------------------------
+
+    print("Starting password hash...")
+
     hashed_password = pwd_context.hash(
         user.password
     )
 
-    # Create user
+    print("Password hash completed.")
+
+    # --------------------------------------------------------
+    # STEP 3: Create database object
+    # --------------------------------------------------------
+
+    print("Creating User object...")
+
     new_user = User(
         name=user.name,
         email=user.email,
@@ -60,8 +74,38 @@ def create_user(
         password_hash=hashed_password
     )
 
+    print("User object created.")
+
+    # --------------------------------------------------------
+    # STEP 4: Add to session
+    # --------------------------------------------------------
+
+    print("Adding user to database session...")
+
     db.add(new_user)
+
+    print("User added to session.")
+
+    # --------------------------------------------------------
+    # STEP 5: Commit
+    # --------------------------------------------------------
+
+    print("Starting database commit...")
+
     db.commit()
+
+    print("Database commit completed.")
+
+    # --------------------------------------------------------
+    # STEP 6: Refresh
+    # --------------------------------------------------------
+
+    print("Refreshing user...")
+
     db.refresh(new_user)
+
+    print("User refresh completed.")
+
+    print("===== CREATE USER SUCCESS =====")
 
     return new_user

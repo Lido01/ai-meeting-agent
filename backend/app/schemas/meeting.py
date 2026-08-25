@@ -1,11 +1,9 @@
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
 from app.schemas.task import TaskResponse
+
 
 class MeetingCreate(BaseModel):
     title: str
-    user_id: int
 
 
 class MeetingResponse(BaseModel):
