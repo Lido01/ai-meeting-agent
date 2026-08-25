@@ -50,7 +50,8 @@ router = APIRouter(
 @router.post("/", response_model=MeetingResponse)
 def create_meeting(
     meeting: MeetingCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user)
 ):
     """
     Create a meeting manually.
@@ -62,7 +63,7 @@ def create_meeting(
         title=meeting.title,
         user_id=meeting.user_id
     )
-
+    
     db.add(new_meeting)
     db.commit()
     db.refresh(new_meeting)
@@ -211,7 +212,6 @@ def upload_meeting(
             detail=f"Could not save uploaded file: {str(e)}"
         )
 
-
     # ========================================================
     # STEP 2: TRANSCRIBE AUDIO
     # ========================================================
@@ -231,7 +231,6 @@ def upload_meeting(
             status_code=500,
             detail=f"Transcription failed: {str(e)}"
         )
-
 
     # ========================================================
     # STEP 3: GET PREVIOUS MEETING CONTEXT
@@ -368,7 +367,11 @@ Transcript:
         print("===== AI ANALYSIS =====")
         print(analysis)
 
-    except json.JSONDecodeError as e:
+    except (
+        json.JSONDecodeError,
+        ValueError,
+        TypeError
+    ) as e:
 
         print("===== JSON ERROR =====")
         print(agent_result)
@@ -396,6 +399,13 @@ Transcript:
         []
     )
 
+    # Make sure action_items is always a list.
+    if not isinstance(
+        action_items,
+        list
+    ):
+        action_items = []
+
     print("===== SUMMARY =====")
     print(summary)
 
@@ -416,7 +426,6 @@ Transcript:
 
         transcript_text=transcript,
         summary_text=summary,
-
         status="analyzed"
     )
 
@@ -840,9 +849,13 @@ Transcript:
     # ========================================================
     # STEP 12: RETURN FINAL RESULT
     # ========================================================
+    
+    
+    # ========================================================
+    # STEP 10: RETURN FINAL RESULT
+    # ========================================================
 
     return {
-
         "message": (
             "Meeting processed successfully"
         ),

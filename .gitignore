@@ -1,0 +1,34 @@
+# Frontend
+client/node_modules/
+client/dist/
+
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/*.pyc
+*.pyc
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Python cache
+__pycache__/
+*.pyo
+*.pyd
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploaded/generated files
+uploads/
+backend/uploads/
+*.mp4
+*.mp3
+*.wav
