@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.sql import func
 from app.database import Base
 from sqlalchemy.orm import relationship
+from datetime import datetime
 
 
 class Meeting(Base):
@@ -27,5 +28,10 @@ class Meeting(Base):
     status = Column(String, default="processing")
 
     user_id = Column(Integer, ForeignKey("users.id"))
-
-    created_at = Column(DateTime, server_default=func.now())
+    
+        # When this meeting was created/processed
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False
+    )
