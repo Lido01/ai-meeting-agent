@@ -7,5 +7,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
-    role = Column(String, default="member")
+    email = Column(String, unique=True, nullable=False, index=True)
+    role = Column(String, default="user")
+
+    # Temporarily nullable because old users already exist
+    password_hash = Column(String, nullable=True)

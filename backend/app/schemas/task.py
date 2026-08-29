@@ -28,6 +28,5 @@ class TaskUpdate(BaseModel):
     description: str | None = None
     assigned_to: str | None = None
     deadline: date | None = None
-
-    # Task status
     status: str | None = None
+    

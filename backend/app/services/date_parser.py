@@ -1,97 +1,107 @@
-from datetime import date, timedelta
+from datetime import date, datetime
 import re
 
 
-def parse_deadline(deadline):
+def parse_deadline(value):
     """
-    Convert Gemini's deadline into a Python date.
+    Convert Gemini deadline text into a Python date.
 
     Examples:
-        "2026-08-25" -> date(2026, 8, 25)
-        "Friday"     -> next Friday
-        "Tomorrow"   -> tomorrow
-        "Monday"     -> next Monday
-        "Before the deadline" -> None
+
+        "September 3, 2026"
+        -> 2026-09-03
+
+        "August 28, 2026"
+        -> 2026-08-28
+
+        "2026-09-03"
+        -> 2026-09-03
+
+    If the value cannot be converted,
+    return None.
     """
 
-    if not deadline:
+    # No deadline
+    if not value:
         return None
 
-    deadline = str(deadline).strip()
+    # Already a Python date
+    if isinstance(value, date):
+        return value
 
-    today = date.today()
+    value = str(value).strip()
 
-    # -----------------------------------------
-    # Already a YYYY-MM-DD date
-    # -----------------------------------------
+    # ---------------------------------------------------------
+    # FORMAT 1: YYYY-MM-DD
+    # ---------------------------------------------------------
 
     try:
-        return date.fromisoformat(deadline)
+        return datetime.strptime(
+            value,
+            "%Y-%m-%d"
+        ).date()
 
     except ValueError:
         pass
 
-    # -----------------------------------------
-    # Relative: tomorrow
-    # -----------------------------------------
+    # ---------------------------------------------------------
+    # FORMAT 2: September 3, 2026
+    # ---------------------------------------------------------
 
-    if deadline.lower() == "tomorrow":
-        return today + timedelta(days=1)
+    try:
+        return datetime.strptime(
+            value,
+            "%B %d, %Y"
+        ).date()
 
-    # -----------------------------------------
-    # Relative: today
-    # -----------------------------------------
+    except ValueError:
+        pass
 
-    if deadline.lower() == "today":
-        return today
+    # ---------------------------------------------------------
+    # FORMAT 3: Sep 3, 2026
+    # ---------------------------------------------------------
 
-    # -----------------------------------------
-    # Ignore vague deadlines
-    # -----------------------------------------
+    try:
+        return datetime.strptime(
+            value,
+            "%b %d, %Y"
+        ).date()
 
-    vague_deadlines = [
-        "before the deadline",
-        "soon",
-        "later",
-        "as soon as possible",
-        "when possible",
-        "next time",
-    ]
+    except ValueError:
+        pass
 
-    if deadline.lower() in vague_deadlines:
-        return None
+    # ---------------------------------------------------------
+    # FORMAT 4: September 3 2026
+    # ---------------------------------------------------------
 
-    # -----------------------------------------
-    # Weekdays
-    # -----------------------------------------
+    try:
+        return datetime.strptime(
+            value,
+            "%B %d %Y"
+        ).date()
 
-    weekdays = {
-        "monday": 0,
-        "tuesday": 1,
-        "wednesday": 2,
-        "thursday": 3,
-        "friday": 4,
-        "saturday": 5,
-        "sunday": 6,
-    }
+    except ValueError:
+        pass
 
-    day_name = deadline.lower()
+    # ---------------------------------------------------------
+    # FORMAT 5: Sep 3 2026
+    # ---------------------------------------------------------
 
-    if day_name in weekdays:
+    try:
+        return datetime.strptime(
+            value,
+            "%b %d %Y"
+        ).date()
 
-        target_day = weekdays[day_name]
-        current_day = today.weekday()
+    except ValueError:
+        pass
 
-        days_ahead = (target_day - current_day) % 7
+    # ---------------------------------------------------------
+    # Could not understand the date
+    # ---------------------------------------------------------
 
-        # If today is that day, choose next week
-        if days_ahead == 0:
-            days_ahead = 7
-
-        return today + timedelta(days=days_ahead)
-
-    # -----------------------------------------
-    # Unknown format
-    # -----------------------------------------
+    print(
+        f"WARNING: Could not parse deadline: {value}"
+    )
 
     return None
