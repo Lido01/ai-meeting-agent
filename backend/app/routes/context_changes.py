@@ -236,60 +236,23 @@ def confirm_context_change(
             .first()
         )
 
-    # If the task does not exist, stop.
-    #
-    # We don't want to mark the context change as confirmed
-    # when there is no task that can actually be updated.
-
-    if not task:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Related task not found"
-        )
+    # If there is no related task, the alert can still be
+    # confirmed. Nothing is updated except the change status.
 
 
     # ========================================================
-    # STEP 4: UPDATE TASK
+    # STEP 4: UPDATE TASK IF ONE EXISTS
     # ========================================================
 
-    if change.change_type == "deadline":
+    if task and change.change_type == "deadline":
 
         print("===== DEADLINE UPDATE =====")
-
-        print(
-            "Old task deadline:",
-            task.deadline
-        )
-
-        print(
-            "New deadline text:",
-            change.new_value
-        )
-
-
-        # ----------------------------------------------------
-        # Convert Gemini text into Python date
-        # ----------------------------------------------------
 
         parsed_deadline = parse_deadline(
             change.new_value
         )
 
-
-        print(
-            "Parsed deadline:",
-            parsed_deadline
-        )
-
-
-        # ----------------------------------------------------
-        # IMPORTANT:
-        # Never save NULL when parsing fails.
-        # ----------------------------------------------------
-
         if parsed_deadline is None:
-
             raise HTTPException(
                 status_code=400,
                 detail=(
@@ -298,69 +261,25 @@ def confirm_context_change(
                 )
             )
 
-
-        # ----------------------------------------------------
-        # Update PostgreSQL Task
-        # ----------------------------------------------------
-
         task.deadline = parsed_deadline
 
-
-        print(
-            "Task deadline after update:",
-            task.deadline
-        )
-
-
-    # ========================================================
-    # ASSIGNEE / OWNER CHANGE
-    # ========================================================
-
-    elif change.change_type in [
+    elif task and change.change_type in [
         "assignee",
         "owner"
     ]:
 
         print("===== ASSIGNEE UPDATE =====")
-
-        print(
-            "Old assignee:",
-            task.assigned_to
-        )
-
-        print(
-            "New assignee:",
-            change.new_value
-        )
-
         task.assigned_to = change.new_value
 
+    elif change.change_type == "decision" or not task:
+        print("Context change confirmed without a task update.")
 
-    # ========================================================
-    # DECISION CHANGE
-    # ========================================================
-
-    elif change.change_type == "decision":
-
-        """
-        We don't update the Task for decision changes yet.
-
-        Later we can create a MeetingDecision model/table.
-
-        For now, the context change can still be confirmed.
-        """
-
-        print(
-            "Decision change confirmed."
-        )
-
-
-    # ========================================================
-    # UNKNOWN CHANGE TYPE
-    # ========================================================
-
-    else:
-
+    elif change.change_type not in [
+        "deadline",
+        "assignee",
+        "owner",
+        "decision"
+    ]:
         raise HTTPException(
             status_code=400,
             detail=(
@@ -408,16 +327,16 @@ def confirm_context_change(
     # STEP 7: REFRESH DATABASE OBJECTS
     # ========================================================
 
-    db.refresh(task)
+    if task:
+        db.refresh(task)
+
     db.refresh(change)
 
 
     print("======================================")
     print("CONTEXT CHANGE CONFIRMED")
     print("Change ID:", change.id)
-    print("Task ID:", task.id)
-    print("Task deadline:", task.deadline)
-    print("Task assignee:", task.assigned_to)
+    print("Task ID:", task.id if task else None)
     print("Status:", change.status)
     print("======================================")
 
@@ -436,15 +355,15 @@ def confirm_context_change(
 
         "status": change.status,
 
-        "task_id": task.id,
+        "task_id": task.id if task else None,
 
-        "task": task.description,
+        "task": task.description if task else None,
 
-        "assigned_to": task.assigned_to,
+        "assigned_to": task.assigned_to if task else None,
 
         "updated_deadline": (
             str(task.deadline)
-            if task.deadline
+            if task and task.deadline
             else None
         ),
 

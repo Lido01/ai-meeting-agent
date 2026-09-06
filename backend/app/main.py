@@ -6,6 +6,7 @@ from app.routes.meetings import router as meeting_router
 from app.routes.tasks import router as task_router
 from app.routes.auth import router as auth_router
 from app.routes.context_changes import router as context_change_router
+from app.routes.assistant import router as assistant_router
 
 
 
@@ -37,6 +38,7 @@ app.include_router(meeting_router)
 app.include_router(task_router)
 app.include_router(auth_router)
 app.include_router(context_change_router)
+app.include_router(assistant_router)
 
 
 # ============================================================

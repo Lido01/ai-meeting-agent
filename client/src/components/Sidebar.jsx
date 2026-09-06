@@ -27,7 +27,7 @@ export default function Sidebar({ activePage, onNavigate, onLogout }) {
             }
             onClick={() => onNavigate("dashboard")}
           >
-            🏠 <span>Dashboard</span>
+             <span>Dashboard</span>
           </button>
 
           <button
@@ -39,7 +39,7 @@ export default function Sidebar({ activePage, onNavigate, onLogout }) {
             }
             onClick={() => onNavigate("meetings")}
           >
-            📊 <span>Meetings</span>
+             <span>Meetings</span>
           </button>
 
           <button
@@ -68,7 +68,7 @@ export default function Sidebar({ activePage, onNavigate, onLogout }) {
             }
             onClick={() => onNavigate("assistant")}
           >
-            🤖 <span>AI Assistant</span>
+             <span>AI Assistant</span>
           </button>
 
           <button
@@ -80,7 +80,7 @@ export default function Sidebar({ activePage, onNavigate, onLogout }) {
             }
             onClick={() => onNavigate("memory")}
           >
-            🧠 <span>MCP Memory</span>
+            <span>MCP Memory</span>
           </button>
 
           <button
@@ -92,7 +92,7 @@ export default function Sidebar({ activePage, onNavigate, onLogout }) {
             }
             onClick={() => onNavigate("context-alerts")}
           >
-            ⚠️ <span>Context Alerts</span>
+             <span>Context Alerts</span>
           </button>
         </div>
 
@@ -109,7 +109,7 @@ export default function Sidebar({ activePage, onNavigate, onLogout }) {
             }
             onClick={() => onNavigate("team")}
           >
-            👥 <span>Team</span>
+             <span>Team</span>
           </button>
 
           <button
@@ -121,7 +121,7 @@ export default function Sidebar({ activePage, onNavigate, onLogout }) {
             }
             onClick={() => onNavigate("integrations")}
           >
-            🔗 <span>Integrations</span>
+             <span>Integrations</span>
           </button>
 
           <button
@@ -133,7 +133,7 @@ export default function Sidebar({ activePage, onNavigate, onLogout }) {
             }
             onClick={() => onNavigate("settings")}
           >
-            ⚙️ <span>Settings</span>
+            <span>Settings</span>
           </button>
         </div>
       </nav>

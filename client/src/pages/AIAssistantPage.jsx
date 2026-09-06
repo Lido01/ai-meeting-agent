@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
+import { getDemoMeetingMemoryReply } from "../data/demoMeetingMemory";
+import { sendAssistantMessage } from "../services/assistantService";
 
 const STORAGE_KEY = "meeting_ai_chat_history";
 
 const suggestedPrompts = [
+  "What was decided about the authentication task?",
+  "Who is responsible for it now?",
+  "What changed between the meetings?",
   "Summarize my recent meetings",
-  "What are my pending action items?",
-  "What decisions were made recently?",
-  "Show me meetings that need follow-up",
 ];
 
 function getInitialMessages() {
@@ -27,28 +29,6 @@ function getInitialMessages() {
       text: "Hello! I'm your AI Meeting Assistant. Ask me about your meetings, action items, decisions, or follow-ups.",
     },
   ];
-}
-
-function generateFrontendResponse(message) {
-  const text = message.toLowerCase();
-
-  if (text.includes("pending") || text.includes("task")) {
-    return "I can help you review your action items. Connect the task backend later and I can provide real-time task summaries here.";
-  }
-
-  if (text.includes("summar")) {
-    return "I can summarize your meetings once meeting data is connected. For now, this assistant interface is running entirely on the frontend.";
-  }
-
-  if (text.includes("decision")) {
-    return "I can identify important decisions from meeting transcripts once the meeting and AI-processing APIs are connected.";
-  }
-
-  if (text.includes("follow")) {
-    return "I can help identify follow-ups from your meetings. The frontend is ready for the backend integration.";
-  }
-
-  return `I received: "${message}". The AI Assistant UI is working. Connect your AI endpoint later to replace this frontend response with a real AI response.`;
 }
 
 export default function AssistantPage() {
@@ -79,16 +59,47 @@ export default function AssistantPage() {
     setInput("");
     setLoading(true);
 
-    setTimeout(() => {
-      const response = {
-        id: Date.now() + 1,
-        role: "assistant",
-        text: generateFrontendResponse(text),
-      };
+    try {
+      const demoReply = getDemoMeetingMemoryReply(text);
 
-      setMessages((current) => [...current, response]);
+      if (demoReply) {
+        setMessages((current) => [
+          ...current,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: demoReply.reply,
+            contextLabel: demoReply.contextLabel,
+          },
+        ]);
+        return;
+      }
+
+      const reply = await sendAssistantMessage(text);
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: Date.now() + 1,
+          role: "assistant",
+          text: reply,
+          contextLabel: "🧠 Retrieved from meeting memory",
+        },
+      ]);
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: Date.now() + 1,
+          role: "assistant",
+          text:
+            error?.message ||
+            "I couldn't retrieve your previous meeting context right now. Please try again.",
+        },
+      ]);
+    } finally {
       setLoading(false);
-    }, 700);
+    }
   }
 
   function handlePrompt(prompt) {
@@ -149,6 +160,12 @@ export default function AssistantPage() {
 
                 <div className="message-content">
                   {message.text}
+
+                  {message.contextLabel && (
+                    <span className="message-context-source">
+                      {message.contextLabel}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -200,10 +217,9 @@ export default function AssistantPage() {
           </div>
 
           <div className="assistant-info">
-            <strong>Frontend mode</strong>
+            <strong>Meeting context</strong>
             <p>
-              The assistant interface is currently operating without a
-              backend AI endpoint.
+              Ask about previous meetings, assignees, and deadlines.
             </p>
           </div>
         </aside>
