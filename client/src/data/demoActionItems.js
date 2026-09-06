@@ -1,0 +1,38 @@
+export const DEMO_ACTION_ITEMS = [
+  {
+    id: "demo-task-1",
+    isDemo: true,
+    description: "Assign follow-up to Sarah",
+    status: "pending",
+    deadline: "2026-09-05",
+    assigned_to: "Sarah",
+    meeting_label: "MEET_2",
+  },
+  {
+    id: "demo-task-2",
+    isDemo: true,
+    description: "Complete JWT authentication",
+    status: "in_progress",
+    deadline: "2026-09-10",
+    assigned_to: "Rahma",
+    meeting_label: "MEET_1",
+  },
+  {
+    id: "demo-task-3",
+    isDemo: true,
+    description: "Review authentication implementation",
+    status: "pending",
+    deadline: "2026-09-15",
+    assigned_to: "Ali",
+    meeting_label: "MEET_2",
+  },
+  {
+    id: "demo-task-4",
+    isDemo: true,
+    description: "Prepare follow-up meeting notes",
+    status: "completed",
+    deadline: "2026-09-04",
+    assigned_to: "Sarah",
+    meeting_label: "MEET_2",
+  },
+];

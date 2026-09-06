@@ -816,6 +816,10 @@ select {
   flex-direction: column;
 }
 
+.full-task-list {
+  gap: 12px;
+}
+
 .task-item,
 .full-task-item {
   display: flex;
@@ -830,6 +834,24 @@ select {
 .full-task-item {
   align-items: flex-start;
   padding: 18px 4px;
+}
+
+.task-card {
+  padding: 18px 16px;
+  border: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.task-card:hover {
+  border-color: #d4d0f5;
+  background: var(--surface-soft);
+  box-shadow: var(--shadow-sm);
 }
 
 .checkbox {
@@ -889,13 +911,25 @@ select {
 
 .task-meta {
   display: flex;
-  gap: 15px;
+  flex-wrap: wrap;
+  gap: 10px 15px;
 
   align-items: center;
 
   color: #9ca3af;
 
   font-size: 11px;
+}
+
+.task-meta-item {
+  color: var(--text-muted);
+}
+
+.task-meeting {
+  padding: 4px 8px;
+  border-radius: 20px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
 }
 
 .status {
@@ -906,6 +940,11 @@ select {
 .status-pending {
   background: var(--warning-bg);
   color: #c2410c;
+}
+
+.status-progress {
+  background: var(--primary-light);
+  color: var(--primary-dark);
 }
 
 .status-completed {
@@ -3548,6 +3587,13 @@ select {
 
 .assistant-message .message-content {
   background: rgba(255, 255, 255, 0.05);
+}
+
+.message-context-source {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #9ca3af;
 }
 
 .user-message {

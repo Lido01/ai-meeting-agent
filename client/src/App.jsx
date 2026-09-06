@@ -110,7 +110,12 @@ export default function App() {
         return <IntegrationsPage />;
 
       case "context-alerts":
-        return <ContextAlertsPage />;
+        return (
+          <ContextAlertsPage
+            refreshKey={refreshKey}
+            onDataChanged={handleDataChanged}
+          />
+        );
 
       case "settings":
         return <SettingsPage />;

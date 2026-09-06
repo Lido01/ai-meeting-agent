@@ -17,7 +17,6 @@ from app.database import get_db
 
 from app.models.meeting import Meeting
 from app.models.task import Task
-from app.models.context_change import ContextChange
 
 from app.schemas.meeting import (
     MeetingCreate,
@@ -28,7 +27,10 @@ from app.services.gemini_service import transcribe_audio
 from app.services.mcp_service import get_previous_context
 from app.services.meeting_agent import create_meeting_agent
 from app.services.date_parser import parse_deadline
-from app.services.context_continuity import analyze_context_change
+from app.services.context_continuity import (
+    get_comparable_previous_meeting,
+    run_context_continuity,
+)
 
 from app.dependencies.auth import get_current_user
 
@@ -61,7 +63,7 @@ def create_meeting(
 
     new_meeting = Meeting(
         title=meeting.title,
-        user_id=meeting.user_id
+        user_id=current_user_id
     )
     
     db.add(new_meeting)
@@ -261,22 +263,16 @@ def upload_meeting(
     # STEP 4: FIND THE MOST RECENT PREVIOUS MEETING
     # ========================================================
 
-    previous_meeting_id = None
+    previous_meeting = get_comparable_previous_meeting(
+        db=db,
+        user_id=current_user_id,
+    )
 
-    if previous_context:
-
-        # The context returned by MCP contains meeting_id.
-        #
-        # We use the latest item as the previous meeting
-        # for the Context Continuity comparison.
-
-        latest_previous_meeting = previous_context[-1]
-
-        previous_meeting_id = (
-            latest_previous_meeting.get(
-                "meeting_id"
-            )
-        )
+    previous_meeting_id = (
+        previous_meeting.id
+        if previous_meeting is not None
+        else None
+    )
 
     print("===== PREVIOUS MEETING ID =====")
     print(previous_meeting_id)
@@ -363,6 +359,12 @@ Transcript:
         analysis = json.loads(
             agent_result
         )
+
+        if isinstance(analysis, str):
+            analysis = json.loads(analysis)
+
+        if not isinstance(analysis, dict):
+            analysis = {}
 
         print("===== AI ANALYSIS =====")
         print(analysis)
@@ -475,6 +477,22 @@ Transcript:
             )
 
             print(item)
+
+            if isinstance(item, str):
+                try:
+                    item = json.loads(item)
+                except (
+                    json.JSONDecodeError,
+                    TypeError,
+                    ValueError
+                ):
+                    item = {"description": item}
+
+            if not isinstance(item, dict):
+                print(
+                    "Skipping action item because it is not an object."
+                )
+                continue
 
             # Support both possible names:
             #
@@ -590,260 +608,31 @@ Transcript:
 
     context_changes = []
 
-    # Only compare if there is a previous meeting.
+    try:
+        print("===== CONTEXT CONTINUITY CHECK =====")
 
-    if previous_meeting_id:
+        context_changes = run_context_continuity(
+            db=db,
+            user_id=current_user_id,
+            current_meeting=new_meeting,
+            previous_meeting=previous_meeting,
+            current_transcript=transcript,
+        )
 
-        try:
+        print("===== CONTEXT CHANGE RESULT =====")
+        print(context_changes)
 
-            print(
-                "===== CONTEXT CONTINUITY CHECK ====="
+    except Exception as e:
+        print("===== CONTEXT CONTINUITY ERROR =====")
+        print(str(e))
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Could not save context changes: "
+                f"{str(e)}"
             )
-
-            # Compare:
-            #
-            # Previous meeting
-            #
-            # VS
-            #
-            # Current meeting
-
-            context_result = analyze_context_change(
-                previous_context=context_text,
-                current_transcript=transcript,
-                previous_meeting_id=previous_meeting_id
-            )
-
-            print(
-                "===== CONTEXT CHANGE RESULT ====="
-            )
-
-            print(
-                context_result
-            )
-
-
-            # =================================================
-            # HANDLE THE CONTEXT ANALYSIS RESULT
-            # =================================================
-
-            change_type = context_result.get(
-                "change_type"
-            )
-
-            task_name = context_result.get(
-                "task"
-            )
-
-            previous_value = context_result.get(
-                "previous_value"
-            )
-
-            new_value = context_result.get(
-                "new_value"
-            )
-
-            evidence = context_result.get(
-                "evidence"
-            )
-
-            detected_previous_meeting_id = (
-                context_result.get(
-                    "previous_meeting_id"
-                )
-            )
-
-
-            # =================================================
-            # ONLY SAVE A CHANGE IF A REAL CHANGE WAS FOUND
-            # =================================================
-
-            if (
-                change_type
-                and change_type.lower()
-                not in [
-                    "none",
-                    "no_change",
-                    "no change"
-                ]
-            ):
-
-                # Try to find the related existing task.
-
-                related_task = None
-
-                if task_name:
-
-                    # Search user's previous tasks
-                    # through meetings.
-
-                    related_task = (
-                        db.query(Task)
-                        .join(Meeting)
-                        .filter(
-                            Meeting.user_id
-                            == current_user_id,
-
-                            Task.description.ilike(
-                                f"%{task_name}%"
-                            )
-                        )
-                        .order_by(
-                            Task.id.desc()
-                        )
-                        .first()
-                    )
-
-
-                # =================================================
-                # CREATE PENDING CONTEXT CHANGE
-                # =================================================
-
-                new_change = ContextChange(
-
-                    # Current meeting where
-                    # the change was detected.
-                    meeting_id=new_meeting.id,
-
-                    # Previous meeting where
-                    # the old value came from.
-                    previous_meeting_id=(
-                        detected_previous_meeting_id
-                        or previous_meeting_id
-                    ),
-
-                    # Example:
-                    #
-                    # deadline_changed
-                    # owner_changed
-                    # decision_changed
-                    #
-                    change_type=change_type,
-
-                    # Existing task that may need updating.
-                    task_id=(
-                        related_task.id
-                        if related_task
-                        else None
-                    ),
-
-                    # Old value.
-                    previous_value=(
-                        str(previous_value)
-                        if previous_value is not None
-                        else None
-                    ),
-
-                    # New value.
-                    new_value=(
-                        str(new_value)
-                        if new_value is not None
-                        else None
-                    ),
-
-                    # Evidence from transcript.
-                    evidence=evidence,
-
-                    # IMPORTANT:
-                    #
-                    # Do NOT automatically update the task.
-                    #
-                    # The frontend will later show:
-                    #
-                    # "Deadline changed from Aug 28
-                    #  to Sep 3.
-                    #
-                    #  Confirm update?"
-                    #
-                    status="pending"
-                )
-
-                db.add(
-                    new_change
-                )
-
-                db.commit()
-
-                db.refresh(
-                    new_change
-                )
-
-
-                # Add context change to response.
-
-                context_changes.append({
-
-                    "id": new_change.id,
-
-                    "change_type": change_type,
-
-                    "task": task_name,
-
-                    "task_id": (
-                        related_task.id
-                        if related_task
-                        else None
-                    ),
-
-                    "previous_value": (
-                        previous_value
-                    ),
-
-                    "new_value": (
-                        new_value
-                    ),
-
-                    "evidence": evidence,
-
-                    "status": "pending",
-
-                    "previous_meeting_id": (
-                        detected_previous_meeting_id
-                        or previous_meeting_id
-                    ),
-
-                    "meeting_id": new_meeting.id
-                })
-
-                print(
-                    "===== CONTEXT CHANGE SAVED ====="
-                )
-
-                print(
-                    context_changes[-1]
-                )
-
-            else:
-
-                print(
-                    "===== NO CONTEXT CHANGE DETECTED ====="
-                )
-
-
-        except Exception as e:
-
-            db.rollback()
-
-            print(
-                "===== CONTEXT CONTINUITY ERROR ====="
-            )
-
-            print(str(e))
-
-            # We do not want a context-analysis problem
-            # to delete an already-successful meeting.
-            #
-            # The meeting and tasks are already saved.
-            #
-            # Therefore we return the meeting result
-            # and report the context-analysis error.
-
-            context_changes.append({
-                "error": (
-                    "Context continuity analysis failed"
-                ),
-                "detail": str(e)
-            })
+        )
 
 
     # ========================================================

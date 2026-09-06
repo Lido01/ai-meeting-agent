@@ -97,6 +97,21 @@ def parse_deadline(value):
         pass
 
     # ---------------------------------------------------------
+    # FORMAT 6: September 10  (year omitted)
+    # ---------------------------------------------------------
+
+    for date_format in ("%B %d", "%b %d"):
+        try:
+            parsed = datetime.strptime(value, date_format)
+            return date(
+                date.today().year,
+                parsed.month,
+                parsed.day
+            )
+        except ValueError:
+            pass
+
+    # ---------------------------------------------------------
     # Could not understand the date
     # ---------------------------------------------------------
 
